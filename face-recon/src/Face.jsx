@@ -200,7 +200,7 @@ const WebcamView = ({ videoRef, detections, isActive, onEnable, message, setMess
             <p>{message}</p>
             <div className="webcam-container" style={{ position: "relative" }}>
                 <video ref={videoRef} autoPlay playsInline className="webcam-video" />
-                <DetectionOverlay detections={detections} isVideo videoRef={videoRef} />
+                {/*<DetectionOverlay detections={detections} isVideo videoRef={videoRef} />*/}
             </div>
         </div>
     );
