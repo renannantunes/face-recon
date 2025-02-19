@@ -44,7 +44,12 @@ export default function FaceDetectorComponent() {
 
         if (navigator.mediaDevices?.getUserMedia) {
             navigator.mediaDevices
-                .getUserMedia({ video: true })
+                .getUserMedia({
+                    video: {
+                        width: 500, 
+                        height: 500, 
+                    }
+                })
                 .then((stream) => {
                     mediaStreamRef.current = stream;
                     if (videoRef.current) {
@@ -83,7 +88,7 @@ export default function FaceDetectorComponent() {
         const imageCenterX = imageWidth / 2;
         const imageCenterY = imageHeight / 2;
     
-        const tolerance = Math.min(imageWidth, imageHeight) * 0.1; // Ajuste dinâmico para diferentes resoluções
+        const tolerance = Math.min(imageWidth, imageHeight) * 0.13; // Ajuste dinâmico para diferentes resoluções
     
         const isCenteredX = Math.abs(boundingBoxCenterX - imageCenterX) <= tolerance;
         const isCenteredY = Math.abs(boundingBoxCenterY - imageCenterY) <= tolerance;
@@ -186,10 +191,10 @@ export default function FaceDetectorComponent() {
     }, []);
 
     return (
-        <div>
+        <div className='container'>
             <h2>Face Detector</h2>
 
-            <div>
+            <div className='container'>
                 <p className="message">{message}</p>
                 {!webcamActive && (
                     <button onClick={enableWebcam}>Enable Webcam</button>
