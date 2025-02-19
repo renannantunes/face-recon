@@ -73,63 +73,100 @@ export default function FaceDetectorComponent() {
 
     };
 
-    const detectCenter = (boundingBox, imageWidth, imageHeight) => {
+    const detectCenter = (boundingBox, videoElement) => {
+        const imageWidth = videoElement.videoWidth;
+        const imageHeight = videoElement.videoHeight;
+    
         const boundingBoxCenterX = boundingBox.originX + boundingBox.width / 2;
         const boundingBoxCenterY = boundingBox.originY + boundingBox.height / 2;
-
+    
         const imageCenterX = imageWidth / 2;
         const imageCenterY = imageHeight / 2;
-
-        // Defina uma margem de erro tolerável para a posição central (por exemplo, 50 pixels)
-        const tolerance = 50;
-
-        // Verifique se o centro do bounding box está dentro da margem tolerável do centro da imagem
+    
+        const tolerance = Math.min(imageWidth, imageHeight) * 0.1; // Ajuste dinâmico para diferentes resoluções
+    
         const isCenteredX = Math.abs(boundingBoxCenterX - imageCenterX) <= tolerance;
         const isCenteredY = Math.abs(boundingBoxCenterY - imageCenterY) <= tolerance;
-
+    
         return isCenteredX && isCenteredY;
+    };
+
+    const getAverageBrightness = (videoElement) => {
+        const canvas = document.createElement("canvas");
+        const ctx = canvas.getContext("2d");
+    
+        canvas.width = videoElement.videoWidth;
+        canvas.height = videoElement.videoHeight;
+    
+        ctx.drawImage(videoElement, 0, 0, canvas.width, canvas.height);
+    
+        const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+        const pixels = imageData.data;
+        
+        let totalBrightness = 0;
+        let totalPixels = pixels.length / 4; // Cada pixel tem 4 valores (R, G, B, A)
+    
+        for (let i = 0; i < pixels.length; i += 4) {
+            const r = pixels[i];
+            const g = pixels[i + 1];
+            const b = pixels[i + 2];
+    
+            const brightness = 0.299 * r + 0.587 * g + 0.114 * b;
+            totalBrightness += brightness;
+        }
+    
+        return totalBrightness / totalPixels;
     };
 
     useEffect(() => {
         const currentTime = Date.now();
         const timeElapsed = currentTime - lastExecuted.current;
-
-        // Só executa se já tiver passado 1 segundo (1000ms)
+    
         if (webcamActive && timeElapsed >= 1000) {
-            lastExecuted.current = currentTime; // Atualiza o tempo da última execução
-
+            lastExecuted.current = currentTime;
+    
             if (!videoDetections || videoDetections.length === 0) {
                 setMessage("Nenhum rosto detectado.");
                 return;
             }
-
+    
             if (videoDetections.length > 1) {
                 setMessage("A imagem só pode conter um rosto.");
                 return;
             }
+    
+            const boundingBox = videoDetections[0].boundingBox;
+            const videoElement = videoRef.current;
+    
+            if (!videoElement) return;
 
-            const isFaceBigEnough =
-                videoDetections[0].boundingBox.height > 170 && videoDetections[0].boundingBox.width > 170;
-            const isCentered = detectCenter(videoDetections[0].boundingBox, 640, 480)
-
+            const brightness = getAverageBrightness(videoElement);
+            console.log(brightness);
+            if (brightness <= 60) {
+                setMessage("A imagem está muito escura. Aproxime-se de uma fonte de luz.");
+                return;
+            }
+    
+            const isFaceBigEnough = boundingBox.height > videoElement.videoHeight * 0.3 
+                && boundingBox.width > videoElement.videoWidth * 0.3;
+    
+            const isCentered = detectCenter(boundingBox, videoElement);
+    
             if (!isFaceBigEnough) {
                 setMessage("Chegue mais perto.");
-                // setIsFaceValid(false);
                 return;
             }
             if (!isCentered) {
                 setMessage("Centralize seu rosto na imagem.");
-                // setIsFaceValid(false);
                 return;
             }
-            console.log(videoDetections[0]);
-
+    
             const confidence = Math.round(parseFloat(videoDetections[0].categories[0].score) * 100);
             if (confidence <= 92) {
                 setMessage("O rosto precisa estar descoberto e de frente para a câmera.");
                 return;
             }
-
+    
             setMessage("Imagem aceita.");
         }
     }, [videoDetections]);
@@ -150,7 +187,7 @@ export default function FaceDetectorComponent() {
 
     return (
         <div>
-            <h1>Face Detector</h1>
+            <h2>Face Detector</h2>
 
             <div>
                 <p className="message">{message}</p>
@@ -159,55 +196,27 @@ export default function FaceDetectorComponent() {
                 )}
                 <div className="webcam-container" style={{ position: "relative" }}>
                     <video ref={videoRef} autoPlay playsInline className="webcam-video" />
-                    <DetectionOverlay detections={videoDetections} isVideo videoRef={videoRef} />
+                    {/* <DetectionOverlay detections={videoDetections} videoRef={videoRef} /> */}
                 </div>
             </div>
         </div>
     );
 }
 
-// Componente para visualização da webcam
-const WebcamView = ({ videoRef, detections, isActive, onEnable, message, setMessage }) => {
-    // const [isFaceValid, setIsFaceValid] = useState(false);
-
-    if (!detections || detections.length === 0) {
-        setMessage("Nenhum rosto detectado.");
-        // setIsFaceValid(false);
-        return;
-    }
-
-    if (detections.length > 1) {
-        setMessage("A imagem só pode conter um rosto.");
-        // setIsFaceValid(false);
-        return;
-    }
-
-    const confidence = Math.round(parseFloat(detections[0].categories[0].score) * 100)
-    if (confidence < 95) {
-        setMessage("O rosto precisa estar descoberto e de frente para a câmera.");
-        // setIsFaceValid(false);
-        return;
-    }
-
-    setMessage("Imagem aceita.");
-    // setIsFaceValid(true);
-    return (
-        <div>
-            <h2>Webcam Detection</h2>
-            {!isActive && (
-                <button onClick={onEnable}>Enable Webcam</button>
-            )}
-            <p>{message}</p>
-            <div className="webcam-container" style={{ position: "relative" }}>
-                <video ref={videoRef} autoPlay playsInline className="webcam-video" />
-                {/*<DetectionOverlay detections={detections} isVideo videoRef={videoRef} />*/}
-            </div>
-        </div>
-    );
-};
-
 // Componente para renderizar as detecções
-const DetectionOverlay = ({ detections, imgElement, isVideo, videoRef }) => {
+const DetectionOverlay = ({ detections, videoRef }) => {
+    if (!videoRef.current) return null;
+
+    const videoElement = videoRef.current;
+    const videoWidth = videoElement.videoWidth;
+    const videoHeight = videoElement.videoHeight;
+    const displayWidth = videoElement.offsetWidth;
+    const displayHeight = videoElement.offsetHeight;
+
+    // Ajuste da escala do vídeo
+    const scaleX = displayWidth / videoWidth;
+    const scaleY = displayHeight / videoHeight;
+
     return (
         <div className="detection-overlay">
             {detections.map((detection, i) => (
@@ -216,12 +225,14 @@ const DetectionOverlay = ({ detections, imgElement, isVideo, videoRef }) => {
                     <div
                         className="highlighter"
                         style={{
-                            left: detection.boundingBox.originX,
-                            top: detection.boundingBox.originY,
-                            width: detection.boundingBox.width,
-                            height: detection.boundingBox.height,
+                            left: (videoWidth - detection.boundingBox.originX - detection.boundingBox.width) * scaleX, // Inverte a posição horizontal
+                            top: detection.boundingBox.originY * scaleY,
+                            width: detection.boundingBox.width * scaleX,
+                            height: detection.boundingBox.height * scaleY,
                         }}
-                    >{Math.round(parseFloat(detection.categories[0].score) * 100)}</div>
+                    >
+                        {Math.round(parseFloat(detection.categories[0].score) * 100)}
+                    </div>
 
                     {/* Renderizar pontos-chave */}
                     {detection.keypoints.map((kp, j) => (
@@ -229,8 +240,8 @@ const DetectionOverlay = ({ detections, imgElement, isVideo, videoRef }) => {
                             key={j}
                             className="key-point"
                             style={{
-                                left: kp.x * (isVideo ? videoRef.current?.offsetWidth : imgElement?.naturalWidth),
-                                top: kp.y * (isVideo ? videoRef.current?.offsetHeight : imgElement?.naturalHeight),
+                                left: (videoWidth - kp.x * videoWidth) * scaleX, // Inverte a posição horizontal dos keypoints
+                                top: kp.y * videoHeight * scaleY,
                             }}
                         />
                     ))}
