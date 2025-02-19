@@ -146,7 +146,6 @@ export default function FaceDetectorComponent() {
             if (!videoElement) return;
 
             const brightness = getAverageBrightness(videoElement);
-            console.log(brightness);
             if (brightness <= 60) {
                 setMessage("A imagem está muito escura. Aproxime-se de uma fonte de luz.");
                 return;
@@ -167,7 +166,8 @@ export default function FaceDetectorComponent() {
             }
     
             const confidence = Math.round(parseFloat(videoDetections[0].categories[0].score) * 100);
-            if (confidence <= 92) {
+            console.log(`Confiança: ${confidence}%`);
+            if (confidence <= 91) {
                 setMessage("O rosto precisa estar descoberto e de frente para a câmera.");
                 return;
             }
