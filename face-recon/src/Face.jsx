@@ -166,8 +166,8 @@ export default function FaceDetectorComponent() {
             }
     
             const confidence = Math.round(parseFloat(videoDetections[0].categories[0].score) * 100);
-            console.log(`Confiança: ${confidence}%`);
-            if (confidence <= 91) {
+            console.log(`Confiança ${confidence}%`);
+            if (confidence < 90) {
                 setMessage("O rosto precisa estar descoberto e de frente para a câmera.");
                 return;
             }
