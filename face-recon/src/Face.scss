@@ -1,7 +1,6 @@
 .container {
   display: flex;
   flex-direction: column;
-  width: 100vw;
   align-items: center;
   justify-content: center;
   padding: 0;
@@ -38,14 +37,32 @@
   align-items: center;
 }
 
-.webcam-container {
-  position: relative;
-  max-width: 500px;
+.wrapper {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  width: auto;
+  margin: 0 1rem;
+  .webcam-container {
+    position: relative;
+    max-width: 500px;
 
-  video {
-    width: 100%;
-    height: 100%;
-    transform: scaleX(-1); // Corrige espelhamento em algumas câmeras
-    object-fit: cover; // Ajusta para preencher corretamente o espaço disponível
+    .mask {
+      position: absolute;
+      z-index: 1;
+      opacity: 0.6;
+      border-radius: 8px;
+      width: 100%;
+    }
+
+    video {
+      width: 100%;
+      height: 100%;
+      transform: scaleX(-1); // Corrige espelhamento em algumas câmeras
+      object-fit: cover; // Ajusta para preencher corretamente o espaço disponível
+      border-radius: 8px;
+    }
   }
 }

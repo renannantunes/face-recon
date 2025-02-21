@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { FaceDetector, FilesetResolver } from '@mediapipe/tasks-vision';
 import "./Face.scss";
+import mask from "./assets/mascara-foto.png";
 
 export default function FaceDetectorComponent() {
     const [faceDetector, setFaceDetector] = useState(null);
@@ -46,8 +47,8 @@ export default function FaceDetectorComponent() {
             navigator.mediaDevices
                 .getUserMedia({
                     video: {
-                        width: 500, 
-                        height: 500, 
+                        width: 500,
+                        height: 500,
                     }
                 })
                 .then((stream) => {
@@ -81,68 +82,102 @@ export default function FaceDetectorComponent() {
     const detectCenter = (boundingBox, videoElement) => {
         const imageWidth = videoElement.videoWidth;
         const imageHeight = videoElement.videoHeight;
-    
+
         const boundingBoxCenterX = boundingBox.originX + boundingBox.width / 2;
         const boundingBoxCenterY = boundingBox.originY + boundingBox.height / 2;
-    
+
         const imageCenterX = imageWidth / 2;
         const imageCenterY = imageHeight / 2;
-    
+
         const tolerance = Math.min(imageWidth, imageHeight) * 0.13; // Ajuste dinâmico para diferentes resoluções
-    
+
         const isCenteredX = Math.abs(boundingBoxCenterX - imageCenterX) <= tolerance;
         const isCenteredY = Math.abs(boundingBoxCenterY - imageCenterY) <= tolerance;
-    
+
         return isCenteredX && isCenteredY;
     };
 
     const getAverageBrightness = (videoElement) => {
         const canvas = document.createElement("canvas");
         const ctx = canvas.getContext("2d");
-    
+
         canvas.width = videoElement.videoWidth;
         canvas.height = videoElement.videoHeight;
-    
+
         ctx.drawImage(videoElement, 0, 0, canvas.width, canvas.height);
-    
+
         const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
         const pixels = imageData.data;
-        
+
         let totalBrightness = 0;
         let totalPixels = pixels.length / 4; // Cada pixel tem 4 valores (R, G, B, A)
-    
+
         for (let i = 0; i < pixels.length; i += 4) {
             const r = pixels[i];
             const g = pixels[i + 1];
             const b = pixels[i + 2];
-    
+
             const brightness = 0.299 * r + 0.587 * g + 0.114 * b;
             totalBrightness += brightness;
         }
-    
+
         return totalBrightness / totalPixels;
+    };
+
+    const isFaceFrontal = (keypoints) => {
+        if (keypoints.length < 4) return false; // Precisa de pelo menos 4 pontos
+
+        // Ordena keypoints da esquerda para a direita
+        const sortedByX = [...keypoints].sort((a, b) => a.x - b.x);
+
+        // Pegamos os dois primeiros como possíveis pontos do lado esquerdo
+        const leftSide = sortedByX.slice(0, 2);
+        // Pegamos os dois últimos como possíveis pontos do lado direito
+        const rightSide = sortedByX.slice(-2);
+
+        // O olho deve estar acima da orelha no eixo Y
+        const leftEye = leftSide.reduce((prev, curr) => (prev.y < curr.y ? prev : curr));
+        const leftEar = leftSide.reduce((prev, curr) => (prev.y > curr.y ? prev : curr));
+
+        const rightEye = rightSide.reduce((prev, curr) => (prev.y < curr.y ? prev : curr));
+        const rightEar = rightSide.reduce((prev, curr) => (prev.y > curr.y ? prev : curr));
+
+        // Calcula as distâncias
+        const distLeft = Math.sqrt(Math.pow(leftEye.x - leftEar.x, 2) + Math.pow(leftEye.y - leftEar.y, 2));
+        const distRight = Math.sqrt(Math.pow(rightEye.x - rightEar.x, 2) + Math.pow(rightEye.y - rightEar.y, 2));
+
+        // Define um limite para a diferença aceitável
+        const threshold = Math.min(distLeft, distRight) * 0.6;
+
+        return Math.abs(distLeft - distRight) < threshold;
     };
 
     useEffect(() => {
         const currentTime = Date.now();
         const timeElapsed = currentTime - lastExecuted.current;
-    
+
         if (webcamActive && timeElapsed >= 1000) {
             lastExecuted.current = currentTime;
-    
+
             if (!videoDetections || videoDetections.length === 0) {
                 setMessage("Nenhum rosto detectado.");
                 return;
             }
-    
+
             if (videoDetections.length > 1) {
                 setMessage("A imagem só pode conter um rosto.");
                 return;
             }
-    
+
+            const keypoints = videoDetections[0].keypoints;
+            if (!isFaceFrontal(keypoints)) {
+                setMessage("Vire seu rosto de frente para a câmera.");
+                return;
+            }
+
             const boundingBox = videoDetections[0].boundingBox;
             const videoElement = videoRef.current;
-    
+
             if (!videoElement) return;
 
             const brightness = getAverageBrightness(videoElement);
@@ -150,28 +185,35 @@ export default function FaceDetectorComponent() {
                 setMessage("A imagem está muito escura. Aproxime-se de uma fonte de luz.");
                 return;
             }
-    
-            const isFaceBigEnough = boundingBox.height > videoElement.videoHeight * 0.3 
-                && boundingBox.width > videoElement.videoWidth * 0.3;
-    
+
+            const isFaceBigEnough = boundingBox.height > videoElement.videoHeight * 0.45
+                && boundingBox.width > videoElement.videoWidth * 0.45;
+
+            const isFaceSmallEnough = boundingBox.height < videoElement.videoHeight * 0.57
+                && boundingBox.width < videoElement.videoWidth * 0.57;
+
             const isCentered = detectCenter(boundingBox, videoElement);
-    
+
             if (!isFaceBigEnough) {
                 setMessage("Chegue mais perto.");
+                return;
+            }
+            if (!isFaceSmallEnough) {
+                setMessage("Se afaste um pouco.");
                 return;
             }
             if (!isCentered) {
                 setMessage("Centralize seu rosto na imagem.");
                 return;
             }
-    
+
             const confidence = Math.round(parseFloat(videoDetections[0].categories[0].score) * 100);
             console.log(`Confiança ${confidence}%`);
             if (confidence < 90) {
-                setMessage("O rosto precisa estar descoberto e de frente para a câmera.");
+                setMessage("O rosto precisa estar descoberto.");
                 return;
             }
-    
+
             setMessage("Imagem aceita.");
         }
     }, [videoDetections]);
@@ -194,12 +236,13 @@ export default function FaceDetectorComponent() {
         <div className='container'>
             <h2>Face Detector</h2>
 
-            <div className='container'>
+            <div className='wrapper'>
                 <p className="message">{message}</p>
                 {!webcamActive && (
                     <button onClick={enableWebcam}>Enable Webcam</button>
                 )}
                 <div className="webcam-container" style={{ position: "relative" }}>
+                    {videoRef.current?.readyState === 4 && <img className="mask" src={mask} alt="Posicione seu rosto no centro" />}
                     <video ref={videoRef} autoPlay playsInline className="webcam-video" />
                     {/* <DetectionOverlay detections={videoDetections} videoRef={videoRef} /> */}
                 </div>
