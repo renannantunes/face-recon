@@ -20,13 +20,13 @@ export default function FaceDetectorComponent() {
     useEffect(() => {
         const initialize = async () => {
             const vision = await FilesetResolver.forVisionTasks(
-                'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.0/wasm'
+                'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision/wasm'
             );
 
             const detector = await FaceDetector.createFromOptions(vision, {
                 baseOptions: {
                     modelAssetPath: `https://storage.googleapis.com/mediapipe-models/face_detector/blaze_face_short_range/float16/1/blaze_face_short_range.tflite`,
-                    delegate: "GPU"
+                    delegate: "CPU"
                 },
                 runningMode: "VIDEO"
             });
@@ -244,7 +244,7 @@ export default function FaceDetectorComponent() {
                 <div className="webcam-container" style={{ position: "relative" }}>
                     {videoRef.current?.readyState === 4 && <img className="mask" src={mask} alt="Posicione seu rosto no centro" />}
                     <video ref={videoRef} autoPlay playsInline className="webcam-video" />
-                    {/* <DetectionOverlay detections={videoDetections} videoRef={videoRef} /> */}
+                    <DetectionOverlay detections={videoDetections} videoRef={videoRef} />
                 </div>
             </div>
         </div>
