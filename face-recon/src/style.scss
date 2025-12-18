@@ -1,0 +1,78 @@
+.camera-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 100%;
+  max-width: 500px; /* Tamanho máximo do container */
+  margin: 0 auto;
+  padding: 10px;
+}
+
+.video-wrapper {
+  position: relative; /* Pai relativo para os filhos absolutos */
+  width: 100%;
+  border-radius: 12px;
+  overflow: hidden;
+  background: #000;
+  box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+  
+  /* Loading Overlay */
+  .loading-overlay {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    z-index: 10;
+    color: white;
+    display: flex;
+    align-items: center;
+  }
+
+  video {
+    display: block;
+    width: 100%;
+    height: auto;
+    /* Espelhar vídeo (modo selfie) */
+    transform: scaleX(-1); 
+  }
+
+  canvas {
+    position: absolute;
+    top: 0;
+    left: 0;
+    /* O canvas deve ser espelhado igual ao vídeo para o desenho bater */
+    transform: scaleX(-1); 
+    pointer-events: none; /* Deixa cliques passarem (se precisar) */
+  }
+}
+
+.capture-btn {
+  margin-top: 20px;
+  width: 60px;
+  height: 60px;
+  border-radius: 50%;
+  background-color: #ccc;
+  border: 4px solid #fff;
+  box-shadow: 0 0 0 2px #ccc;
+  color: white;
+  font-size: 24px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  transition: all 0.3s ease;
+  
+  &.active {
+    background-color: #28a745; /* Verde quando válido */
+    box-shadow: 0 0 0 2px #28a745;
+    cursor: pointer;
+    
+    &:hover {
+      transform: scale(1.1);
+    }
+  }
+
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+}

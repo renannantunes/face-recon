@@ -1,13 +1,26 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, useMemo } from 'react';
 import { FaceDetector, FilesetResolver } from '@mediapipe/tasks-vision';
 import "./Face.scss";
 import mask from "./assets/mascara-foto.png";
+
+export const getWebGLRenderer = () => {
+    const canvas = document.createElement('canvas');
+    const gl = canvas.getContext('webgl');
+    if (!gl) return null;
+
+    const debugInfo = gl.getExtension('WEBGL_debug_renderer_info');
+    return debugInfo ? gl.getParameter(debugInfo.UNMASKED_RENDERER_WEBGL) || '' : '';
+}
 
 export default function FaceDetectorComponent() {
     const [faceDetector, setFaceDetector] = useState(null);
     const [webcamActive, setWebcamActive] = useState(false);
     const [videoDetections, setVideoDetections] = useState([]);
     const [message, setMessage] = useState("Ative a câmera...");
+    const isGPUCompatible = useMemo(() => {
+        const renderer = getWebGLRenderer();
+        return renderer && !renderer.includes('Adreno (TM) 830');
+    }, []);
 
 
     const videoRef = useRef(null);
@@ -26,7 +39,7 @@ export default function FaceDetectorComponent() {
             const detector = await FaceDetector.createFromOptions(vision, {
                 baseOptions: {
                     modelAssetPath: `https://storage.googleapis.com/mediapipe-models/face_detector/blaze_face_short_range/float16/1/blaze_face_short_range.tflite`,
-                    delegate: "CPU"
+                    delegate: "GPU"
                 },
                 runningMode: "VIDEO"
             });
@@ -34,7 +47,11 @@ export default function FaceDetectorComponent() {
             setFaceDetector(detector);
         };
 
-        initialize();
+        if (isGPUCompatible) {
+            initialize();
+        } else {
+            setMessage('Incompatibilidade com GPU Adreno (TM) 830 detectada!');
+        }
     }, []);
 
     // Handlers para webcam
